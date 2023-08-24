@@ -4,53 +4,64 @@ using UnityEditor;
 using UnityEngine;
 using SR = Genesis.Editor.StringResources;
 
-namespace Genesis.Editor {
-
+namespace Genesis.Editor
+{
     [CustomEditor(typeof(DepthSkybox))]
-    public class DepthSkyboxEditor : UnityEditor.Editor {
-
+    public class DepthSkyboxEditor : UnityEditor.Editor
+    {
         private DepthSkybox _depthSkybox;
         private GameObject gameObject;
 
-        private void OnEnable() {
+        private void OnEnable()
+        {
             _depthSkybox = (DepthSkybox)target;
             gameObject = _depthSkybox.gameObject;
         }
-        public override void OnInspectorGUI() {
+
+        public override void OnInspectorGUI()
+        {
             base.OnInspectorGUI();
 
-            if (GUILayout.Button(SR.ExtractMeshButton)) {
+            if (GUILayout.Button(SR.ExtractMeshButton))
+            {
                 ExtractMesh();
             }
         }
 
-        private void ExtractMesh() {
+        private void ExtractMesh()
+        {
             Mesh mesh = CreateMesh();
-            GameObject g = new GameObject();
+            GameObject g = this.gameObject;
             g.name = $"{gameObject.name} (Mesh)";
-            var mf = g.AddComponent<MeshFilter>();
-            var mr = g.AddComponent<MeshRenderer>();
+            var mf = g.GetComponent<MeshFilter>();
+            var mr = g.GetComponent<MeshRenderer>();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             Material mat = new Material(Shader.Find("Unlit/Texture"));
             mat.mainTexture = (Texture2D)gameObject.GetComponent<MeshRenderer>().sharedMaterial.GetTexture("_MainTex");
             mr.sharedMaterial = mat;
-            mf.sharedMesh = mesh;
+            MeshCollider collider = g.AddComponent<MeshCollider>();
+            collider.convex = true;
+            collider.sharedMesh = mesh;
         }
 
-        private Mesh CreateMesh() {
+        private Mesh CreateMesh()
+        {
             MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
             MeshRenderer meshRenderer = gameObject.GetComponent<MeshRenderer>();
 
-            if (meshFilter == null || meshRenderer == null) {
+            if (meshFilter == null || meshRenderer == null)
+            {
                 return null;
             }
 
             Texture2D depthTex = (Texture2D)meshRenderer.sharedMaterial.GetTexture("_Depth");
-            if (!depthTex.isReadable) {
+            if (!depthTex.isReadable)
+            {
                 throw new InvalidOperationException($"The texture must be readable. (Check if Read/Write is set in the texture's import settings)");
             }
-            if (!DepthSampler.IsFormatSupported(depthTex.graphicsFormat)) {
+            if (!DepthSampler.IsFormatSupported(depthTex.graphicsFormat))
+            {
                 throw new NotSupportedException($"The texture format {depthTex.graphicsFormat} of this depth texture is not supported.");
             }
             IDepthSampler sampler = DepthSampler.Get(depthTex);
@@ -62,13 +73,15 @@ namespace Genesis.Editor {
             NativeArray<Vector3> vertices = new NativeArray<Vector3>(mesh.vertexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             NativeArray<ushort> indices = new NativeArray<ushort>((int)mesh.GetIndexCount(0), Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             NativeArray<Vector2> uvs = new NativeArray<Vector2>(mesh.vertexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            using (var data = Mesh.AcquireReadOnlyMeshData(mesh)) {
+            using (var data = Mesh.AcquireReadOnlyMeshData(mesh))
+            {
                 data[0].GetVertices(vertices);
                 data[0].GetIndices(indices, 0);
                 data[0].GetUVs(0, uvs);
             }
 
-            for (int i = 0; i < vertices.Length; i++) {
+            for (int i = 0; i < vertices.Length; i++)
+            {
                 Vector2 uv = uvs[i];
                 uv.x = 1 - uv.x;
                 uvs[i] = uv;
@@ -94,7 +107,8 @@ namespace Genesis.Editor {
             return extracted;
         }
 
-        private float SampleBilinear(NativeArray<float> depthData, Vector2 uv, int width, int height) {
+        private float SampleBilinear(NativeArray<float> depthData, Vector2 uv, int width, int height)
+        {
             float i = Mathf.Lerp(0f, width - 1, uv.x);
             int i0 = Mathf.FloorToInt(i);
 

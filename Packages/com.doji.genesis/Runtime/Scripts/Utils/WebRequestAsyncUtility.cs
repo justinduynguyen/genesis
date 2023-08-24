@@ -130,7 +130,7 @@ namespace Genesis.Utilities {
                     webRequest = UnityWebRequest.Get(url);
                     break;
                 case HTTPVerb.POST:
-                    webRequest = UnityWebRequest.Post(url, postData);
+                    webRequest = UnityWebRequest.PostWwwForm(url, postData);
                     byte[] rawBody = Encoding.UTF8.GetBytes(postData);
                     webRequest.uploadHandler = new UploadHandlerRaw(rawBody);
                     webRequest.downloadHandler = new DownloadHandlerBuffer();
